@@ -1,0 +1,71 @@
+// Define the input pins for the encoder outputs
+const int encoder1PinD0 = 2;
+const int encoder1PinA1 = 3;
+const int encoder2PinD0 = 4;
+const int encoder2PinA1 = 5;
+
+// Define the variables to store the encoder positions
+long encoder1Pos = 0;
+long encoder2Pos = 0;
+
+// Define the variables to store the previous encoder states
+int encoder1LastState;
+int encoder2LastState;
+
+void setup() {
+  // Initialize the serial communication
+  Serial.begin(9600);
+
+  // Configure the encoder pins as input
+  pinMode(encoder1PinD0, INPUT);
+  pinMode(encoder1PinA1, INPUT);
+  pinMode(encoder2PinD0, INPUT);
+  pinMode(encoder2PinA1, INPUT);
+
+  // Enable pull-up resistors on the encoder pins
+  digitalWrite(encoder1PinD0, HIGH);
+  digitalWrite(encoder1PinA1, HIGH);
+  digitalWrite(encoder2PinD0, HIGH);
+  digitalWrite(encoder2PinA1, HIGH);
+
+  // Initialize the encoder last state variables
+  encoder1LastState = digitalRead(encoder1PinD0);
+  encoder2LastState = digitalRead(encoder2PinD0);
+}
+
+void loop() {
+  // Read the current state of the encoder pins
+  int encoder1StateD0 = digitalRead(encoder1PinD0);
+  int encoder1StateA1 = digitalRead(encoder1PinA1);
+  int encoder2StateD0 = digitalRead(encoder2PinD0);
+  int encoder2StateA1 = digitalRead(encoder2PinA1);
+
+  // Check if the encoder 1 has moved
+  if (encoder1StateD0 != encoder1LastState) {
+    if (encoder1StateA1 != encoder1StateD0) {
+      encoder1Pos++;
+    } else {
+      encoder1Pos--;
+    }
+    encoder1LastState = encoder1StateD0;
+  }
+
+  // Check if the encoder 2 has moved
+  if (encoder2StateD0 != encoder2LastState) {
+    if (encoder2StateA1 != encoder2StateD0) {
+      encoder2Pos++;
+    } else {
+      encoder2Pos--;
+    }
+    encoder2LastState = encoder2StateD0;
+  }
+
+  // Send the encoder positions to the Arduino terminal
+  Serial.print("Encoder 1 Position: ");
+  Serial.print(encoder1Pos);
+  Serial.print("  Encoder 2 Position: ");
+  Serial.println(encoder2Pos);
+
+  // Wait for a short period of time before reading the encoder positions again
+  delay(10);
+}

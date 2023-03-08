@@ -1,0 +1,117 @@
+#include <ros.h>
+#include <std_msgs/Int32.h>
+#include <std_msgs/Bool.h>
+#include <Encoder.h>
+
+#define ENCODER1_PINA 2
+#define ENCODER1_PINB 3
+#define ENCODER2_PINA 4
+#define ENCODER2_PINB 5
+#define IR_PIN 6
+#define MOTOR_LEFT_PIN_1 7
+#define MOTOR_LEFT_PIN_2 8
+#define MOTOR_RIGHT_PIN_1 9
+#define MOTOR_RIGHT_PIN_2 10
+
+Encoder encoder1(ENCODER1_PINA, ENCODER1_PINB);
+Encoder encoder2(ENCODER2_PINA, ENCODER2_PINB);
+float motorSpeedLeft = 0;
+float motorSpeedRight = 0;
+bool movementEnabled = true;
+
+ros::NodeHandle nh;
+
+std_msgs::Int32 encoder1_msg;
+ros::Publisher encoder1_pub("encoder1", &encoder1_msg);
+std_msgs::Int32 encoder2_msg;
+ros::Publisher encoder2_pub("encoder2", &encoder2_msg);
+std_msgs::Bool ir_msg;
+ros::Publisher ir_pub("ir", &ir_msg);
+ros::Subscriber<std_msgs::Int32> motor_left_sub("motor_left", &motorLeftCallback);
+ros::Subscriber<std_msgs::Int32> motor_right_sub("motor_right", &motorRightCallback);
+
+void setup() {
+  nh.initNode();
+  nh.advertise(encoder1_pub);
+  nh.advertise(encoder2_pub);
+  nh.advertise(ir_pub);
+  nh.subscribe(motor_left_sub);
+  nh.subscribe(motor_right_sub);
+  pinMode(IR_PIN, INPUT_PULLUP);
+  pinMode(MOTOR_LEFT_PIN_1, OUTPUT);
+  pinMode(MOTOR_LEFT_PIN_2, OUTPUT);
+  pinMode(MOTOR_RIGHT_PIN_1, OUTPUT);
+  pinMode(MOTOR_RIGHT_PIN_2, OUTPUT);
+}
+
+void loop() {
+  // Read encoder values and publish them
+  encoder1_msg.data = encoder1.read();
+  encoder1_pub.publish(&encoder1_msg);
+  encoder2_msg.data = encoder2.read();
+  encoder2_pub.publish(&encoder2_msg);
+  
+  // Read IR sensor and publish its state
+  ir_msg.data = !digitalRead(IR_PIN); // Invert the value since the IR sensor is pulled down when active
+  ir_pub.publish(&ir_msg);
+  
+  // Set motor control pins based on the motor speed values received from ROS
+  if (movementEnabled) {
+    // Calculate the motor speeds based on the differential drive system inputs
+    float leftSpeed = motorSpeedLeft + motorSpeedRight;
+    float rightSpeed = motorSpeedLeft - motorSpeedRight;
+    // Set the motor directions based on the motor speeds
+    if (leftSpeed > 0) {
+      digitalWrite(MOTOR_LEFT_PIN_1, HIGH);
+      digitalWrite(MOTOR_LEFT_PIN_2, LOW);
+    } else if (leftSpeed < 0) {
+      digitalWrite(MOTOR_LEFT_PIN_1, LOW);
+      digitalWrite(MOTOR_LEFT_PIN_2, HIGH);
+    } else {
+      digitalWrite(MOTOR_LEFT_PIN_1, LOW);
+      digitalWrite(MOTOR_LEFT_PIN_2, LOW);
+    }
+    if (rightSpeed > 0) {
+      digitalWrite(MOTOR_RIGHT_PIN_1, HIGH);
+      digitalWrite(MOTOR_RIGHT_PIN_2, LOW);
+    } else if (rightSpeed < 0) {
+      digitalWrite(MOTOR_RIGHT_PIN_1, LOW);
+      digitalWrite(MOTOR_RIGHT_PIN_2, HIGH);
+    } else
+{
+  digitalWrite(MOTOR_RIGHT_PIN_1, LOW);
+  digitalWrite(MOTOR_RIGHT_PIN_2, LOW);
+}
+// Set the motor speed based on the absolute value of the motor speeds
+analogWrite(MOTOR_LEFT_SPEED_PIN, abs(leftSpeed));
+analogWrite(MOTOR_RIGHT_SPEED_PIN, abs(rightSpeed));
+} else {
+// If movement is disabled, stop the motors
+digitalWrite(MOTOR_LEFT_PIN_1, LOW);
+digitalWrite(MOTOR_LEFT_PIN_2, LOW);
+digitalWrite(MOTOR_RIGHT_PIN_1, LOW);
+digitalWrite(MOTOR_RIGHT_PIN_2, LOW);
+analogWrite(MOTOR_LEFT_SPEED_PIN, 0);
+analogWrite(MOTOR_RIGHT_SPEED_PIN, 0);
+}
+nh.spinOnce();
+delay(10);
+}
+
+void motorLeftCallback(const std_msgs::Int32& speed_msg) {
+motorSpeedLeft = speed_msg.data;
+}
+
+void motorRightCallback(const std_msgs::Int32& speed_msg) {
+motorSpeedRight = speed_msg.data;
+}
+
+void IR_Callback() {
+movementEnabled = !digitalRead(IR_PIN);
+}
+
+You will need to modify this code to match your hardware connections and the ROS messages you are using for motor control and IR sensor state. You will also need to make sure that you have the necessary ROS libraries installed on your Arduino board.
+
+Once you have uploaded this code to your Arduino board, you can use ROS to publish motor commands to the "motor_left" and "motor_right" topics and subscribe to the "encoder1", "encoder2", and "ir" topics to get feedback from the encoders and IR sensor.
+
+
